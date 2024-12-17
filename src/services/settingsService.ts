@@ -5,8 +5,11 @@ export interface ExhibitionSettings {
   title: string;
   subtitle?: string;
   year: string;
+  welcomeText: string;
+  headerColor: string;
+  headerSize: 'text-2xl' | 'text-3xl' | 'text-4xl' | 'text-5xl';
   marqueeMessages: string[];
-  marqueeSpeed?: number; // in seconds
+  marqueeSpeed?: number;
   marqueeColor?: string;
 }
 
@@ -19,9 +22,12 @@ export const getExhibitionSettings = async (): Promise<ExhibitionSettings> => {
   }
   // Default settings
   return {
-    title: 'Gonasika Kendujhar Mahotaav',
+    title: 'Gonasika Kendujhar Mahotsaav',
     subtitle: 'and Regional Saras',
     year: '2024',
+    welcomeText: 'Welcome to the Exhibition',
+    headerColor: '#1e40af',
+    headerSize: 'text-3xl',
     marqueeMessages: ['🎉 Please fill the Visitor Feedback form and win assured discount at choice of ORMAS store!', '🎁 Get a chance to win a bumper prize at lucky draw!'],
     marqueeSpeed: 30,
     marqueeColor: '#1e40af' // navy blue

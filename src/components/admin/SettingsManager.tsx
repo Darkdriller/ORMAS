@@ -9,7 +9,10 @@ export const SettingsManager = () => {
     year: '',
     marqueeMessages: [''],
     marqueeSpeed: 30,
-    marqueeColor: '#1e40af'
+    marqueeColor: '#1e40af',
+    welcomeText: '',
+    headerColor: '',
+    headerSize: 'text-3xl'
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +117,47 @@ export const SettingsManager = () => {
                 className="w-full px-4 py-2 border rounded-lg"
                 placeholder="Year"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Welcome Text
+              </label>
+              <input
+                type="text"
+                value={settings.welcomeText}
+                onChange={(e) => setSettings({ ...settings, welcomeText: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg"
+                placeholder="Welcome message"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Header Color
+              </label>
+              <input
+                type="color"
+                value={settings.headerColor}
+                onChange={(e) => setSettings({ ...settings, headerColor: e.target.value })}
+                className="w-full h-10 px-1 py-1 border rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Header Size
+              </label>
+              <select
+                value={settings.headerSize}
+                onChange={(e) => setSettings({ ...settings, headerSize: e.target.value as any })}
+                className="w-full px-4 py-2 border rounded-lg"
+              >
+                <option value="text-2xl">Small</option>
+                <option value="text-3xl">Medium</option>
+                <option value="text-4xl">Large</option>
+                <option value="text-5xl">Extra Large</option>
+              </select>
             </div>
           </div>
 

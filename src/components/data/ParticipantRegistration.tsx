@@ -5,6 +5,7 @@ import { collection, addDoc, getDocs } from 'firebase/firestore';
 import { Camera, Plus, X, User, Phone, Package, RotateCw } from 'lucide-react';
 import productCategories from '../../data/Product Category.json';
 import odishaMapping from '../../data/odisha_mapping.json';
+import { indianStates, unionTerritories } from '../../constants/locationConstants';
 
 interface Participant {
   name: string;
@@ -26,11 +27,14 @@ interface Registration {
   stallNumber: string;
   exhibitionId: string;
   stallState: string;
+  otherState?: string;
   stallDistrict: string;
   stallBlock: string;
   gramPanchayat?: string;
   organizationType: 'SHG' | 'PG' | 'PC' | 'Proprietor' | 'Pvt Company' | 'Others';
+  otherOrganization?: string;
   stallSponsor: 'DRDA/DSMS' | 'KVIC' | 'H&CI' | 'NABARD' | 'MVSN' | 'Others';
+  otherSponsor?: string;
   accommodation: string;
   stallPhotos: string[];
   participants: Participant[];
@@ -59,11 +63,14 @@ export const ParticipantRegistration = () => {
     exhibitionId: '',
     stallNumber: '',
     stallState: '',
+    otherState: '',
     stallDistrict: '',
     stallBlock: '',
     gramPanchayat: '',
     organizationType: 'SHG',
+    otherOrganization: '',
     stallSponsor: 'DRDA/DSMS',
+    otherSponsor: '',
     accommodation: '',
     stallPhotos: [],
     participants: [],
@@ -220,11 +227,14 @@ export const ParticipantRegistration = () => {
           exhibitionId: '',
           stallNumber: '',
           stallState: '',
+          otherState: '',
           stallDistrict: '',
           stallBlock: '',
           gramPanchayat: '',
           organizationType: 'SHG',
+          otherOrganization: '',
           stallSponsor: 'DRDA/DSMS',
+          otherSponsor: '',
           accommodation: '',
           stallPhotos: [],
           participants: [],
@@ -336,14 +346,16 @@ export const ParticipantRegistration = () => {
               <select
                 value={registration.stallState}
                 onChange={(e) => {
-                  const isOdishaSelected = e.target.value === 'Odisha';
+                  const selectedState = e.target.value;
+                  const isOdishaSelected = selectedState === 'Odisha';
                   setIsOdisha(isOdishaSelected);
                   setRegistration(prev => ({
                     ...prev,
-                    stallState: e.target.value,
+                    stallState: selectedState,
                     stallDistrict: '',
                     stallBlock: '',
-                    gramPanchayat: ''
+                    gramPanchayat: '',
+                    otherState: ''
                   }));
                 }}
                 className="w-full px-3 py-2 border rounded-lg text-sm"
@@ -354,6 +366,33 @@ export const ParticipantRegistration = () => {
                 <option value="Other">Other State</option>
               </select>
             </div>
+
+            {registration.stallState === 'Other' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Select Other State/UT</label>
+                <select
+                  value={registration.otherState}
+                  onChange={(e) => setRegistration(prev => ({
+                    ...prev,
+                    otherState: e.target.value
+                  }))}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  required
+                >
+                  <option value="">Select State/UT</option>
+                  <optgroup label="States">
+                    {indianStates.map(state => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Union Territories">
+                    {unionTerritories.map(ut => (
+                      <option key={ut} value={ut}>{ut}</option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">District</label>
@@ -463,6 +502,25 @@ export const ParticipantRegistration = () => {
               </select>
             </div>
 
+            {registration.organizationType === 'Others' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Specify Organization Type
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={registration.otherOrganization || ''}
+                  onChange={(e) => setRegistration(prev => ({
+                    ...prev,
+                    otherOrganization: e.target.value
+                  }))}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  placeholder="Please specify organization type"
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Stall Sponsor</label>
               <select
@@ -471,11 +529,33 @@ export const ParticipantRegistration = () => {
                 onChange={(e) => setRegistration(prev => ({ ...prev, stallSponsor: e.target.value as any }))}
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               >
-                {['DRDA/DSMS', 'KVIC', 'H&CI', 'NABARD', 'MVSN', 'Others'].map(sponsor => (
-                  <option key={sponsor} value={sponsor}>{sponsor}</option>
-                ))}
+                <option value="DRDA/DSMS">DRDA/DSMS</option>
+                <option value="KVIC">KVIC</option>
+                <option value="H&CI">H&CI</option>
+                <option value="NABARD">NABARD</option>
+                <option value="MVSN">MVSN</option>
+                <option value="Others">Others</option>
               </select>
             </div>
+
+            {registration.stallSponsor === 'Others' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Please Specify Sponsor
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={registration.otherSponsor || ''}
+                  onChange={(e) => setRegistration(prev => ({
+                    ...prev,
+                    otherSponsor: e.target.value
+                  }))}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  placeholder="Enter sponsor name"
+                />
+              </div>
+            )}
           </div>
 
           <div>

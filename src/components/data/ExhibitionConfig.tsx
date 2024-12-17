@@ -29,11 +29,14 @@ const downloadRegistrations = async (exhibitionId: string, exhibitionName: strin
       exhibitionId: data.exhibitionId,
       stallNumber: data.stallNumber,
       stallState: data.stallState,
+      otherState: data.otherState || '',
       stallDistrict: data.stallDistrict,
       stallBlock: data.stallBlock,
       gramPanchayat: data.gramPanchayat,
       organizationType: data.organizationType,
+      otherOrganization: data.otherOrganization || '',
       stallSponsor: data.stallSponsor,
+      otherSponsor: data.otherSponsor || '',
       accommodation: data.accommodation,
     };
 

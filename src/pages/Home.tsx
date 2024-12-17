@@ -62,17 +62,25 @@ export const Home = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
       >
-        <h1 className="text-4xl font-bold text-navy-800 mb-4">
-          Welcome Visitor to<br />
+        <div 
+          className={`${settings?.headerSize || 'text-4xl'} font-bold mb-4 leading-tight sm:leading-normal`}
+          style={{ 
+            color: settings?.headerColor || '#1e3a8a',
+            fontSize: 'clamp(1rem, 4vw, 2.25rem)'  // Min: 16px, Max: 36px, scales with viewport
+          }}
+        >
           {settings ? (
             <>
-              {settings.title}
-              {settings.subtitle && <span> {settings.subtitle}</span>} {settings.year}
+              <div>{settings.welcomeText}</div>
+              <div>
+                {settings.title}
+                {settings.subtitle && <span> {settings.subtitle}</span>} {settings.year}
+              </div>
             </>
           ) : (
             'Loading...'
           )}
-        </h1>
+        </div>
       </motion.header>
 
       <MarqueeBanner />
