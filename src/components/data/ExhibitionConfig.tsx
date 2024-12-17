@@ -211,13 +211,13 @@ export const ExhibitionConfig = () => {
               </div>
               <div className="flex items-center gap-4">
                 <button
-                  onClick={() => downloadRegistrations(exhibition.id, exhibition.name)}
+                  onClick={() => exhibition.id && exhibition.name && downloadRegistrations(exhibition.id, exhibition.name)}
                   className="text-sm text-navy-600 hover:text-navy-700"
                 >
                   Download Registrations
                 </button>
                 <button
-                  onClick={() => downloadSales(exhibition.id, exhibition.name)}
+                  onClick={() => exhibition.id && exhibition.name && downloadSales(exhibition.id, exhibition.name)}
                   className="text-sm text-navy-600 hover:text-navy-700"
                 >
                   Download Sales

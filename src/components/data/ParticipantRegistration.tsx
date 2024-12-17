@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { db } from '../../firebase/config';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
-import { Camera, Plus, X, User, Phone, Package } from 'lucide-react';
+import { Camera, Plus, X, User, Phone, Package, RotateCw } from 'lucide-react';
 import productCategories from '../../data/Product Category.json';
 import odishaMapping from '../../data/odisha_mapping.json';
 
@@ -55,6 +55,7 @@ interface VillageMapping {
 export const ParticipantRegistration = () => {
   const [exhibitions, setExhibitions] = useState<Array<{ id: string; name: string }>>([]);
   const [registration, setRegistration] = useState<Registration>({
+    id: '',
     exhibitionId: '',
     stallNumber: '',
     stallState: '',
@@ -78,6 +79,7 @@ export const ParticipantRegistration = () => {
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
   const [availableBlocks, setAvailableBlocks] = useState<string[]>([]);
   const [availableGPs, setAvailableGPs] = useState<string[]>([]);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
 
   useEffect(() => {
     fetchExhibitions();
@@ -214,6 +216,7 @@ export const ParticipantRegistration = () => {
       setTimeout(() => {
         setSuccess(false);
         setRegistration({
+          id: '',   
           exhibitionId: '',
           stallNumber: '',
           stallState: '',
@@ -245,535 +248,553 @@ export const ParticipantRegistration = () => {
       .map(p => p['Product Sub Category '].trim());
   };
 
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
   return (
     <div className="space-y-6">
-      {showWebcam ? (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded-lg w-full max-w-sm mx-4">
-            <Webcam
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              className="w-full rounded-lg"
-            />
-            <div className="mt-4 flex justify-center gap-4">
+      {showWebcam && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full">
+            <div className="relative">
+              <Webcam
+                ref={webcamRef}
+                audio={false}
+                screenshotFormat="image/jpeg"
+                videoConstraints={{
+                  facingMode: facingMode,
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 }
+                }}
+                className="w-full rounded-lg"
+              />
               <button
-                onClick={capturePhoto}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                onClick={toggleCamera}
+                className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-lg"
               >
-                <Camera className="w-4 h-4" />
-                Capture
+                <RotateCw className="w-6 h-6 text-gray-700" />
+              </button>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => {
+                  setShowWebcam(false);
+                  setCaptureType(undefined);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-700"
+              >
+                Cancel
               </button>
               <button
-                onClick={() => setShowWebcam(false)}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                onClick={capturePhoto}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
               >
-                <X className="w-4 h-4" />
-                Cancel
+                Capture
               </button>
             </div>
           </div>
         </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <div className="bg-white rounded-lg p-4 shadow-sm space-y-4">
-            <h3 className="font-semibold text-lg text-navy-800">Basic Information</h3>
-            
+      )}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
+        <div className="bg-white rounded-lg p-4 shadow-sm space-y-4">
+          <h3 className="font-semibold text-lg text-navy-800">Basic Information</h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Exhibition</label>
+            <select
+              required
+              value={registration.exhibitionId}
+              onChange={(e) => setRegistration(prev => ({ ...prev, exhibitionId: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+            >
+              <option value="">Select Exhibition</option>
+              {exhibitions.map(exhibition => (
+                <option key={exhibition.id} value={exhibition.id}>
+                  {exhibition.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Stall Number</label>
+            <input
+              type="text"
+              required
+              value={registration.stallNumber}
+              onChange={(e) => setRegistration(prev => ({ ...prev, stallNumber: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              placeholder="Enter stall number"
+            />
+          </div>
+
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Exhibition</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">State</label>
+              <select
+                value={registration.stallState}
+                onChange={(e) => {
+                  const isOdishaSelected = e.target.value === 'Odisha';
+                  setIsOdisha(isOdishaSelected);
+                  setRegistration(prev => ({
+                    ...prev,
+                    stallState: e.target.value,
+                    stallDistrict: '',
+                    stallBlock: '',
+                    gramPanchayat: ''
+                  }));
+                }}
+                className="w-full px-3 py-2 border rounded-lg text-sm"
+                required
+              >
+                <option value="">Select State</option>
+                <option value="Odisha">Odisha</option>
+                <option value="Other">Other State</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">District</label>
+              {isOdisha ? (
+                <select
+                  value={registration.stallDistrict}
+                  onChange={(e) => setRegistration(prev => ({
+                    ...prev,
+                    stallDistrict: e.target.value
+                  }))}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  required
+                >
+                  <option value="">Select District</option>
+                  {availableDistricts.map(district => (
+                    <option key={district} value={district}>
+                      {district}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={registration.stallDistrict}
+                  onChange={(e) => setRegistration(prev => ({
+                    ...prev,
+                    stallDistrict: e.target.value
+                  }))}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  placeholder="Enter district name"
+                  required
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Block</label>
+              {isOdisha ? (
+                <select
+                  value={registration.stallBlock}
+                  onChange={(e) => setRegistration(prev => ({
+                    ...prev,
+                    stallBlock: e.target.value
+                  }))}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  required
+                  disabled={!registration.stallDistrict}
+                >
+                  <option value="">Select Block</option>
+                  {availableBlocks.map(block => (
+                    <option key={block} value={block}>
+                      {block}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={registration.stallBlock}
+                  onChange={(e) => setRegistration(prev => ({
+                    ...prev,
+                    stallBlock: e.target.value
+                  }))}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  placeholder="Enter block name"
+                  required
+                />
+              )}
+            </div>
+
+            {isOdisha && (
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Gram Panchayat</label>
+                <select
+                  value={registration.gramPanchayat}
+                  onChange={(e) => setRegistration(prev => ({
+                    ...prev,
+                    gramPanchayat: e.target.value
+                  }))}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  required
+                  disabled={!registration.stallBlock}
+                >
+                  <option value="">Select Gram Panchayat</option>
+                  {availableGPs.map(gp => (
+                    <option key={gp} value={gp}>
+                      {gp}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Organization Type</label>
               <select
                 required
-                value={registration.exhibitionId}
-                onChange={(e) => setRegistration(prev => ({ ...prev, exhibitionId: e.target.value }))}
+                value={registration.organizationType}
+                onChange={(e) => setRegistration(prev => ({ ...prev, organizationType: e.target.value as any }))}
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               >
-                <option value="">Select Exhibition</option>
-                {exhibitions.map(exhibition => (
-                  <option key={exhibition.id} value={exhibition.id}>
-                    {exhibition.name}
-                  </option>
+                {['SHG', 'PG', 'PC', 'Proprietor', 'Pvt Company', 'Others'].map(type => (
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Stall Number</label>
-              <input
-                type="text"
+              <label className="block text-sm font-medium text-gray-600 mb-1">Stall Sponsor</label>
+              <select
                 required
-                value={registration.stallNumber}
-                onChange={(e) => setRegistration(prev => ({ ...prev, stallNumber: e.target.value }))}
+                value={registration.stallSponsor}
+                onChange={(e) => setRegistration(prev => ({ ...prev, stallSponsor: e.target.value as any }))}
                 className="w-full px-3 py-2 border rounded-lg text-sm"
-                placeholder="Enter stall number"
-              />
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">State</label>
-                <select
-                  value={registration.stallState}
-                  onChange={(e) => {
-                    const isOdishaSelected = e.target.value === 'Odisha';
-                    setIsOdisha(isOdishaSelected);
-                    setRegistration(prev => ({
-                      ...prev,
-                      stallState: e.target.value,
-                      stallDistrict: '',
-                      stallBlock: '',
-                      gramPanchayat: ''
-                    }));
-                  }}
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                  required
-                >
-                  <option value="">Select State</option>
-                  <option value="Odisha">Odisha</option>
-                  <option value="Other">Other State</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">District</label>
-                {isOdisha ? (
-                  <select
-                    value={registration.stallDistrict}
-                    onChange={(e) => setRegistration(prev => ({
-                      ...prev,
-                      stallDistrict: e.target.value
-                    }))}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                    required
-                  >
-                    <option value="">Select District</option>
-                    {availableDistricts.map(district => (
-                      <option key={district} value={district}>
-                        {district}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={registration.stallDistrict}
-                    onChange={(e) => setRegistration(prev => ({
-                      ...prev,
-                      stallDistrict: e.target.value
-                    }))}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                    placeholder="Enter district name"
-                    required
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Block</label>
-                {isOdisha ? (
-                  <select
-                    value={registration.stallBlock}
-                    onChange={(e) => setRegistration(prev => ({
-                      ...prev,
-                      stallBlock: e.target.value
-                    }))}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                    required
-                    disabled={!registration.stallDistrict}
-                  >
-                    <option value="">Select Block</option>
-                    {availableBlocks.map(block => (
-                      <option key={block} value={block}>
-                        {block}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={registration.stallBlock}
-                    onChange={(e) => setRegistration(prev => ({
-                      ...prev,
-                      stallBlock: e.target.value
-                    }))}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                    placeholder="Enter block name"
-                    required
-                  />
-                )}
-              </div>
-
-              {isOdisha && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Gram Panchayat</label>
-                  <select
-                    value={registration.gramPanchayat}
-                    onChange={(e) => setRegistration(prev => ({
-                      ...prev,
-                      gramPanchayat: e.target.value
-                    }))}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                    required
-                    disabled={!registration.stallBlock}
-                  >
-                    <option value="">Select Gram Panchayat</option>
-                    {availableGPs.map(gp => (
-                      <option key={gp} value={gp}>
-                        {gp}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Organization Type</label>
-                <select
-                  required
-                  value={registration.organizationType}
-                  onChange={(e) => setRegistration(prev => ({ ...prev, organizationType: e.target.value as any }))}
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                >
-                  {['SHG', 'PG', 'PC', 'Proprietor', 'Pvt Company', 'Others'].map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Stall Sponsor</label>
-                <select
-                  required
-                  value={registration.stallSponsor}
-                  onChange={(e) => setRegistration(prev => ({ ...prev, stallSponsor: e.target.value as any }))}
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                >
-                  {['DRDA/DSMS', 'KVIC', 'H&CI', 'NABARD', 'MVSN', 'Others'].map(sponsor => (
-                    <option key={sponsor} value={sponsor}>{sponsor}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Accommodation Details</label>
-              <textarea
-                value={registration.accommodation}
-                onChange={(e) => setRegistration(prev => ({ ...prev, accommodation: e.target.value }))}
-                className="w-full px-3 py-2 border rounded-lg text-sm"
-                rows={2}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Stall Photos</label>
-              <div className="flex flex-wrap gap-2">
-                {registration.stallPhotos.map((photo, index) => (
-                  <div key={index} className="relative">
-                    <img src={photo} alt="Stall" className="w-20 h-20 object-cover rounded-lg" />
-                    <button
-                      type="button"
-                      onClick={() => setRegistration(prev => ({
-                        ...prev,
-                        stallPhotos: prev.stallPhotos.filter((_, i) => i !== index)
-                      }))}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
+              >
+                {['DRDA/DSMS', 'KVIC', 'H&CI', 'NABARD', 'MVSN', 'Others'].map(sponsor => (
+                  <option key={sponsor} value={sponsor}>{sponsor}</option>
                 ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Accommodation Details</label>
+            <textarea
+              value={registration.accommodation}
+              onChange={(e) => setRegistration(prev => ({ ...prev, accommodation: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-2">Stall Photos</label>
+            <div className="flex flex-wrap gap-2">
+              {registration.stallPhotos.map((photo, index) => (
+                <div key={index} className="relative">
+                  <img src={photo} alt="Stall" className="w-20 h-20 object-cover rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={() => setRegistration(prev => ({
+                      ...prev,
+                      stallPhotos: prev.stallPhotos.filter((_, i) => i !== index)
+                    }))}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => startCapture('stall')}
+                className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-500"
+              >
+                <Camera className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Participants Section */}
+        <div className="bg-white rounded-lg p-4 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-lg text-navy-800">Participants</h3>
+            <button
+              type="button"
+              onClick={addParticipant}
+              className="text-navy-600 hover:text-navy-700 flex items-center gap-1"
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </button>
+          </div>
+
+          {registration.participants.map((participant, index) => (
+            <div key={index} className="border rounded-lg p-3 space-y-3">
+              <div className="flex justify-between items-start">
+                <h4 className="font-medium text-sm text-gray-600">Participant {index + 1}</h4>
                 <button
                   type="button"
-                  onClick={() => startCapture('stall')}
-                  className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-500"
+                  onClick={() => removeParticipant(index)}
+                  className="text-red-500"
                 >
-                  <Camera className="w-6 h-6" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </div>
-          </div>
 
-          {/* Participants Section */}
-          <div className="bg-white rounded-lg p-4 shadow-sm space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-lg text-navy-800">Participants</h3>
-              <button
-                type="button"
-                onClick={addParticipant}
-                className="text-navy-600 hover:text-navy-700 flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" />
-                Add
-              </button>
-            </div>
-
-            {registration.participants.map((participant, index) => (
-              <div key={index} className="border rounded-lg p-3 space-y-3">
-                <div className="flex justify-between items-start">
-                  <h4 className="font-medium text-sm text-gray-600">Participant {index + 1}</h4>
-                  <button
-                    type="button"
-                    onClick={() => removeParticipant(index)}
-                    className="text-red-500"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={participant.name}
-                      onChange={(e) => {
-                        const updatedParticipants = [...registration.participants];
-                        updatedParticipants[index] = { ...participant, name: e.target.value };
-                        setRegistration(prev => ({ ...prev, participants: updatedParticipants }));
-                      }}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Phone</label>
-                    <input
-                      type="tel"
-                      required
-                      value={participant.phone}
-                      onChange={(e) => {
-                        const updatedParticipants = [...registration.participants];
-                        updatedParticipants[index] = { ...participant, phone: e.target.value };
-                        setRegistration(prev => ({ ...prev, participants: updatedParticipants }));
-                      }}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Gender</label>
-                    <select
-                      required
-                      value={participant.gender}
-                      onChange={(e) => {
-                        const updatedParticipants = [...registration.participants];
-                        updatedParticipants[index] = { ...participant, gender: e.target.value as any };
-                        setRegistration(prev => ({ ...prev, participants: updatedParticipants }));
-                      }}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Photo</label>
-                    {participant.profilePhoto ? (
-                      <div className="relative inline-block">
-                        <img
-                          src={participant.profilePhoto}
-                          alt="Profile"
-                          className="w-20 h-20 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => updateParticipantPhoto(index, '')}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => startCapture('profile', index)}
-                        className="flex items-center gap-2 text-navy-600 border border-navy-600 px-3 py-2 rounded-lg text-sm"
-                      >
-                        <Camera className="w-4 h-4" />
-                        Take Photo
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Inventory Section */}
-          <div className="bg-white rounded-lg p-4 shadow-sm space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-lg text-navy-800">Inventory</h3>
-              <button
-                type="button"
-                onClick={addInventoryItem}
-                className="text-navy-600 hover:text-navy-700 flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" />
-                Add Item
-              </button>
-            </div>
-
-            {registration.inventory.map((item, index) => (
-              <div key={index} className="border rounded-lg p-3 space-y-3">
-                <div className="flex justify-between items-start">
-                  <h4 className="font-medium text-sm text-gray-600">Item {index + 1}</h4>
-                  <button
-                    type="button"
-                    onClick={() => removeInventoryItem(index)}
-                    className="text-red-500"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Product Category</label>
-                    <select
-                      required
-                      value={item.productCategory}
-                      onChange={(e) => {
-                        const updatedInventory = [...registration.inventory];
-                        updatedInventory[index] = {
-                          ...item,
-                          productCategory: e.target.value,
-                          productName: '' // Reset product name when category changes
-                        };
-                        setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
-                      }}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    >
-                      <option value="">Select Category</option>
-                      {getUniqueCategories().map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Product</label>
-                    <select
-                      required
-                      value={item.productName}
-                      onChange={(e) => {
-                        const updatedInventory = [...registration.inventory];
-                        updatedInventory[index] = {
-                          ...item,
-                          productName: e.target.value
-                        };
-                        setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
-                      }}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      disabled={!item.productCategory}
-                    >
-                      <option value="">Select Product</option>
-                      {item.productCategory && getProductsByCategory(item.productCategory).map((product) => (
-                        <option key={product} value={product}>
-                          {product}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Quantity</label>
-                    <input
-                      type="number"
-                      required
-                      value={item.quantity}
-                      onChange={(e) => {
-                        const updatedInventory = [...registration.inventory];
-                        updatedInventory[index] = { ...item, quantity: parseInt(e.target.value) };
-                        setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
-                      }}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      min="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Value (₹)</label>
-                    <input
-                      type="number"
-                      required
-                      value={item.value}
-                      onChange={(e) => {
-                        const updatedInventory = [...registration.inventory];
-                        updatedInventory[index] = { ...item, value: parseInt(e.target.value) };
-                        setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
-                      }}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      min="0"
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={participant.name}
+                    onChange={(e) => {
+                      const updatedParticipants = [...registration.participants];
+                      updatedParticipants[index] = { ...participant, name: e.target.value };
+                      setRegistration(prev => ({ ...prev, participants: updatedParticipants }));
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">Product Photos</label>
-                  <div className="flex flex-wrap gap-2">
-                    {item.photos.map((photo, photoIndex) => (
-                      <div key={photoIndex} className="relative">
-                        <img src={photo} alt="Product" className="w-20 h-20 object-cover rounded-lg" />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updatedInventory = [...registration.inventory];
-                            updatedInventory[index] = {
-                              ...item,
-                              photos: item.photos.filter((_, i) => i !== photoIndex)
-                            };
-                            setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
-                          }}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => startCapture('product', index)}
-                      className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-500"
-                    >
-                      <Camera className="w-6 h-6" />
-                    </button>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    required
+                    value={participant.phone}
+                    onChange={(e) => {
+                      const updatedParticipants = [...registration.participants];
+                      updatedParticipants[index] = { ...participant, phone: e.target.value };
+                      setRegistration(prev => ({ ...prev, participants: updatedParticipants }));
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
                 </div>
               </div>
-            ))}
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full bg-navy-600 text-white py-3 rounded-lg font-medium ${
-              loading ? 'opacity-50' : 'hover:bg-navy-700'
-            }`}
-          >
-            {loading ? 'Saving...' : 'Submit Registration'}
-          </button>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Gender</label>
+                  <select
+                    required
+                    value={participant.gender}
+                    onChange={(e) => {
+                      const updatedParticipants = [...registration.participants];
+                      updatedParticipants[index] = { ...participant, gender: e.target.value as any };
+                      setRegistration(prev => ({ ...prev, participants: updatedParticipants }));
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
 
-          {success && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-lg text-center">
-                <div className="text-green-500 mb-4">✓</div>
-                <p className="text-lg font-medium">Registration Successful!</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Photo</label>
+                  {participant.profilePhoto ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={participant.profilePhoto}
+                        alt="Profile"
+                        className="w-20 h-20 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateParticipantPhoto(index, '')}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startCapture('profile', index)}
+                      className="flex items-center gap-2 text-navy-600 border border-navy-600 px-3 py-2 rounded-lg text-sm"
+                    >
+                      <Camera className="w-4 h-4" />
+                      Take Photo
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          )}
-        </form>
-      )}
+          ))}
+        </div>
+
+        {/* Inventory Section */}
+        <div className="bg-white rounded-lg p-4 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-lg text-navy-800">Inventory</h3>
+            <button
+              type="button"
+              onClick={addInventoryItem}
+              className="text-navy-600 hover:text-navy-700 flex items-center gap-1"
+            >
+              <Plus className="w-4 h-4" />
+              Add Item
+            </button>
+          </div>
+
+          {registration.inventory.map((item, index) => (
+            <div key={index} className="border rounded-lg p-3 space-y-3">
+              <div className="flex justify-between items-start">
+                <h4 className="font-medium text-sm text-gray-600">Item {index + 1}</h4>
+                <button
+                  type="button"
+                  onClick={() => removeInventoryItem(index)}
+                  className="text-red-500"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Product Category</label>
+                  <select
+                    required
+                    value={item.productCategory}
+                    onChange={(e) => {
+                      const updatedInventory = [...registration.inventory];
+                      updatedInventory[index] = {
+                        ...item,
+                        productCategory: e.target.value,
+                        productName: '' // Reset product name when category changes
+                      };
+                      setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  >
+                    <option value="">Select Category</option>
+                    {getUniqueCategories().map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Product</label>
+                  <select
+                    required
+                    value={item.productName}
+                    onChange={(e) => {
+                      const updatedInventory = [...registration.inventory];
+                      updatedInventory[index] = {
+                        ...item,
+                        productName: e.target.value
+                      };
+                      setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    disabled={!item.productCategory}
+                  >
+                    <option value="">Select Product</option>
+                    {item.productCategory && getProductsByCategory(item.productCategory).map((product) => (
+                      <option key={product} value={product}>
+                        {product}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    required
+                    value={item.quantity}
+                    onChange={(e) => {
+                      const updatedInventory = [...registration.inventory];
+                      updatedInventory[index] = { ...item, quantity: parseInt(e.target.value) };
+                      setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    min="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Value (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    value={item.value}
+                    onChange={(e) => {
+                      const updatedInventory = [...registration.inventory];
+                      updatedInventory[index] = { ...item, value: parseInt(e.target.value) };
+                      setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">Product Photos</label>
+                <div className="flex flex-wrap gap-2">
+                  {item.photos.map((photo, photoIndex) => (
+                    <div key={photoIndex} className="relative">
+                      <img src={photo} alt="Product" className="w-20 h-20 object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedInventory = [...registration.inventory];
+                          updatedInventory[index] = {
+                            ...item,
+                            photos: item.photos.filter((_, i) => i !== photoIndex)
+                          };
+                          setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => startCapture('product', index)}
+                    className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-500"
+                  >
+                    <Camera className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className={`w-full bg-navy-600 text-white py-3 rounded-lg font-medium ${
+            loading ? 'opacity-50' : 'hover:bg-navy-700'
+          }`}
+        >
+          {loading ? 'Saving...' : 'Submit Registration'}
+        </button>
+
+        {success && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg text-center">
+              <div className="text-green-500 mb-4">✓</div>
+              <p className="text-lg font-medium">Registration Successful!</p>
+            </div>
+          </div>
+        )}
+      </form>
     </div>
   );
 }; 

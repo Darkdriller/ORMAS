@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ZoomIn, Store, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getProducts, categories, type Product } from '../services/productService';
@@ -66,59 +66,89 @@ export const Products = () => {
           Product Availability
         </h1>
         
-        <CategoryButtons 
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-        />
+        <div className="overflow-x-auto pb-4 mb-6">
+          <div className="flex space-x-2 min-w-max">
+            {categories.map(category => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
+                  selectedCategory === category
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-white text-orange-600 hover:bg-orange-50'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <ProductGrid 
-          products={filteredProducts}
-          onProductSelect={setSelectedProduct}
-        />
-      </motion.div>
-
-      {selectedProduct && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedProduct(null)}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-xl p-6 max-w-2xl w-full relative"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setSelectedProduct(null)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 bg-white rounded-full p-1 shadow-lg transition-colors"
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          {filteredProducts.map(product => (
+            <motion.div
+              key={product.id}
+              layout
+              onClick={() => setSelectedProduct(product)}
+              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
             >
-              <X className="w-6 h-6" />
-            </button>
-            <div className="relative">
-              <div className="aspect-video w-full overflow-hidden rounded-lg mb-4">
+              <div className="aspect-square relative">
                 <img
-                  src={selectedProduct.images[0]}
-                  alt={selectedProduct.name}
-                  className="w-full h-full object-contain bg-gray-50"
+                  src={product.images[0]}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
                 />
               </div>
-              <h2 className="text-2xl font-bold mb-2">{selectedProduct.name}</h2>
-              <p className="text-gray-600 mb-2">{selectedProduct.category}</p>
-              {selectedProduct.stallRange && (
-                <div className="flex items-center gap-2 text-orange-600">
-                  <Store className="w-5 h-5" />
-                  <span>Available in Stalls: {selectedProduct.stallRange}</span>
+              <div className="p-2 sm:p-3">
+                <h3 className="text-sm sm:text-base font-medium truncate">{product.name}</h3>
+                <p className="text-xs sm:text-sm text-gray-600 truncate">{product.category}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {selectedProduct && (
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 p-4 flex items-center justify-center"
+            onClick={() => setSelectedProduct(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl w-full max-w-md sm:max-w-2xl relative max-h-[90vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="absolute top-2 right-2 z-10 text-gray-500 hover:text-gray-700 bg-white rounded-full p-1 shadow-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="p-4">
+                <div className="aspect-square sm:aspect-video w-full overflow-hidden rounded-lg mb-4">
+                  <img
+                    src={selectedProduct.images[0]}
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-contain bg-gray-50"
+                  />
                 </div>
-              )}
-            </div>
+                <h2 className="text-xl sm:text-2xl font-bold mb-2">{selectedProduct.name}</h2>
+                <p className="text-gray-600 mb-2">{selectedProduct.category}</p>
+                {selectedProduct.stallRange && (
+                  <div className="flex items-center gap-2 text-orange-600 text-sm sm:text-base">
+                    <Store className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span>Available in Stalls: {selectedProduct.stallRange}</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 };
