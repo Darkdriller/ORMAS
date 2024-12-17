@@ -6,6 +6,8 @@ import { Schedule } from './pages/Schedule';
 import { Foods } from './pages/Foods';
 import { Feedback } from './pages/Feedback';
 import { Administrator } from './pages/Administrator';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { Data } from './pages/Data';
 
 function App() {
   return (
@@ -17,6 +19,14 @@ function App() {
         <Route path="/foods" element={<Foods />} />
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/administrator" element={<Administrator />} />
+        <Route 
+          path="/data" 
+          element={
+            <ProtectedRoute>
+              <Data />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </BrowserRouter>
   );
