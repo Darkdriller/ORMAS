@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { ExhibitionConfig } from '../components/data/ExhibitionConfig';
 import { ParticipantRegistration } from '../components/data/ParticipantRegistration';
 import { DailySales } from '../components/data/DailySales';
-import { ArrowLeft, Settings, UserPlus, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Settings, UserPlus, BarChart3, ClipboardList } from 'lucide-react';
+import { RegistrationViewer } from '../components/data/RegistrationViewer';
 
 export const Data = () => {
   const [activeSection, setActiveSection] = useState<string>('');
@@ -29,6 +30,13 @@ export const Data = () => {
       description: 'Record daily sales data',
       icon: <BarChart3 className="w-6 h-6" />,
       component: <DailySales />
+    },
+    {
+      id: 'registrations',
+      title: 'View Registrations',
+      description: 'View and edit participant registrations',
+      icon: <ClipboardList className="w-6 h-6" />,
+      component: <RegistrationViewer />
     }
   ];
 

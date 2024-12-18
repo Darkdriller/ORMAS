@@ -37,6 +37,9 @@ export const DailySales = () => {
   const [historicalSales, setHistoricalSales] = useState<DailySale[]>([]);
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
   const [editingProducts, setEditingProducts] = useState<DailySale['products']>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -167,25 +170,38 @@ export const DailySales = () => {
     }
   };
 
-  const validateSaleItem = (item: DailySale['products'][0]) => {
-    return (
-      item.productCategory &&
-      item.productName &&
-      item.quantitySold > 0 &&
-      item.salesValue > 0
-    );
+  const validateSaleItem = (item: DailySale['products'][0]): boolean => {
+    if (!item.productCategory) {
+      setError('Please select a product category');
+      return false;
+    }
+    if (!item.productName) {
+      setError('Please select a product name');
+      return false;
+    }
+    if (!item.quantitySold || item.quantitySold <= 0) {
+      setError('Please enter a valid quantity sold');
+      return false;
+    }
+    if (!item.salesValue || item.salesValue <= 0) {
+      setError('Please enter a valid sales value');
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     // Validate all sale items
-    const isValid = sales.every(validateSaleItem);
-    if (!isValid) {
-      alert('Please fill in all required fields with valid values');
-      return;
+    for (let i = 0; i < sales.length; i++) {
+      if (!validateSaleItem(sales[i])) {
+        return;
+      }
     }
 
+    setLoading(true);
     try {
       const saleData: DailySale = {
         id: '',
@@ -196,11 +212,13 @@ export const DailySales = () => {
       };
       await addDoc(collection(db, 'dailySales'), saleData);
       setSales([]);
-      fetchHistoricalSales();
-      alert('Sales data saved successfully!');
-    } catch (error) {
-      console.error('Error saving sales data:', error);
-      alert('Error saving sales data');
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError('Failed to submit sales data. Please try again.');
+      console.error('Error submitting sales:', err);
+    } finally {
+      setLoading(false);
     }
   };
 

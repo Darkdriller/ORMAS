@@ -12,20 +12,22 @@ interface Participant {
   phone: string;
   gender: 'male' | 'female' | 'other';
   profilePhoto: string;
+  documents: string[];
 }
 
 interface InventoryItem {
-  productName: string;
   productCategory: string;
-  photos: string[];
+  productName: string;
   quantity: number;
   value: number;
+  photos: string[];
 }
 
 interface Registration {
   id: string;
   exhibitionId: string;
   stallNumber: string;
+  stallName: string;
   stallState: string;
   otherState?: string;
   stallDistrict: string;
@@ -37,6 +39,7 @@ interface Registration {
   otherSponsor?: string;
   accommodation: string;
   stallPhotos: string[];
+  documents: string[];
   participants: Participant[];
   inventory: InventoryItem[];
 }
@@ -56,33 +59,40 @@ interface VillageMapping {
   };
 }
 
+const initialRegistration: Registration = {
+  id: '',
+  exhibitionId: '',
+  stallNumber: '',
+  stallName: '',
+  stallState: '',
+  otherState: '',
+  stallDistrict: '',
+  stallBlock: '',
+  gramPanchayat: '',
+  organizationType: 'SHG',
+  otherOrganization: '',
+  stallSponsor: 'DRDA/DSMS',
+  otherSponsor: '',
+  accommodation: '',
+  stallPhotos: [],
+  documents: [],
+  participants: [],
+  inventory: []
+};
+
+type CaptureType = 'stall' | 'profile' | 'product' | 'participant-doc' | 'stall-doc';
+
 export const ParticipantRegistration = () => {
   const [exhibitions, setExhibitions] = useState<Array<{ id: string; name: string }>>([]);
-  const [registration, setRegistration] = useState<Registration>({
-    id: '',
-    exhibitionId: '',
-    stallNumber: '',
-    stallState: '',
-    otherState: '',
-    stallDistrict: '',
-    stallBlock: '',
-    gramPanchayat: '',
-    organizationType: 'SHG',
-    otherOrganization: '',
-    stallSponsor: 'DRDA/DSMS',
-    otherSponsor: '',
-    accommodation: '',
-    stallPhotos: [],
-    participants: [],
-    inventory: []
-  });
+  const [registration, setRegistration] = useState<Registration>(initialRegistration);
   const [showWebcam, setShowWebcam] = useState(false);
-  const [captureType, setCaptureType] = useState<'stall' | 'profile' | 'product'>();
+  const [captureType, setCaptureType] = useState<CaptureType | undefined>(undefined);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isOdisha, setIsOdisha] = useState(true);
   const webcamRef = useRef<Webcam>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
   const [availableBlocks, setAvailableBlocks] = useState<string[]>([]);
   const [availableGPs, setAvailableGPs] = useState<string[]>([]);
@@ -132,32 +142,36 @@ export const ParticipantRegistration = () => {
     })));
   };
 
-  const startCapture = (type: 'stall' | 'profile' | 'product', index: number = 0) => {
-    setCaptureType(type);
-    setCurrentIndex(index);
-    setShowWebcam(true);
-  };
-
   const capturePhoto = () => {
     if (webcamRef.current) {
       const imageSrc = webcamRef.current.getScreenshot();
-      if (imageSrc) {
-        switch (captureType) {
-          case 'stall':
-            setRegistration(prev => ({
-              ...prev,
-              stallPhotos: [...prev.stallPhotos, imageSrc]
-            }));
-            break;
-          case 'profile':
-            updateParticipantPhoto(currentIndex, imageSrc);
-            break;
-          case 'product':
-            updateInventoryPhoto(currentIndex, imageSrc);
-            break;
-        }
-        setShowWebcam(false);
+      if (!imageSrc) return;
+
+      switch (captureType) {
+        case 'stall':
+          setRegistration(prev => ({
+            ...prev,
+            stallPhotos: [...prev.stallPhotos, imageSrc]
+          }));
+          break;
+        case 'profile':
+          updateParticipantPhoto(currentIndex, imageSrc);
+          break;
+        case 'product':
+          updateInventoryPhoto(currentIndex, imageSrc);
+          break;
+        case 'participant-doc':
+          updateParticipantDocument(currentIndex, imageSrc);
+          break;
+        case 'stall-doc':
+          setRegistration(prev => ({
+            ...prev,
+            documents: [...prev.documents, imageSrc]
+          }));
+          break;
       }
+      setShowWebcam(false);
+      setCaptureType(undefined);
     }
   };
 
@@ -179,10 +193,19 @@ export const ParticipantRegistration = () => {
     setRegistration(prev => ({ ...prev, inventory: updatedInventory }));
   };
 
+  const updateParticipantDocument = (index: number, document: string) => {
+    const updatedParticipants = [...registration.participants];
+    updatedParticipants[index] = {
+      ...updatedParticipants[index],
+      documents: [...(updatedParticipants[index].documents || []), document]
+    };
+    setRegistration(prev => ({ ...prev, participants: updatedParticipants }));
+  };
+
   const addParticipant = () => {
     setRegistration(prev => ({
       ...prev,
-      participants: [...prev.participants, { name: '', phone: '', gender: 'male', profilePhoto: '' }]
+      participants: [...prev.participants, { name: '', phone: '', gender: 'male', profilePhoto: '', documents: [] }]
     }));
   };
 
@@ -213,39 +236,96 @@ export const ParticipantRegistration = () => {
     }));
   };
 
+  const validateForm = (): boolean => {
+    if (!registration.exhibitionId) {
+      setError('Please select an exhibition');
+      return false;
+    }
+    if (!registration.stallNumber) {
+      setError('Please enter a stall number');
+      return false;
+    }
+    if (!registration.stallName) {
+      setError('Please enter a stall name');
+      return false;
+    }
+    if (!registration.stallState) {
+      setError('Please select a state');
+      return false;
+    }
+    if (registration.stallState === 'Other' && !registration.otherState) {
+      setError('Please select other state');
+      return false;
+    }
+    if (!registration.stallDistrict) {
+      setError('Please enter district');
+      return false;
+    }
+    if (!registration.stallBlock) {
+      setError('Please enter block');
+      return false;
+    }
+    if (isOdisha && !registration.gramPanchayat) {
+      setError('Please select gram panchayat');
+      return false;
+    }
+    if (registration.organizationType === 'Others' && !registration.otherOrganization) {
+      setError('Please specify organization type');
+      return false;
+    }
+    if (registration.stallSponsor === 'Others' && !registration.otherSponsor) {
+      setError('Please specify sponsor');
+      return false;
+    }
+    if (registration.participants.length === 0) {
+      setError('Please add at least one participant');
+      return false;
+    }
+    
+    // Validate participants
+    for (let i = 0; i < registration.participants.length; i++) {
+      const participant = registration.participants[i];
+      if (!participant.name) {
+        setError(`Please enter name for participant ${i + 1}`);
+        return false;
+      }
+      if (!participant.phone) {
+        setError(`Please enter phone for participant ${i + 1}`);
+        return false;
+      }
+      if (!participant.gender) {
+        setError(`Please select gender for participant ${i + 1}`);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
     try {
-      await addDoc(collection(db, 'registrations'), registration);
+      const docRef = await addDoc(collection(db, 'registrations'), registration);
       setSuccess(true);
-      // Reset form after 2 seconds
+      // Reset form after successful submission
+      setRegistration(initialRegistration);
+      setIsOdisha(true);
       setTimeout(() => {
         setSuccess(false);
-        setRegistration({
-          id: '',   
-          exhibitionId: '',
-          stallNumber: '',
-          stallState: '',
-          otherState: '',
-          stallDistrict: '',
-          stallBlock: '',
-          gramPanchayat: '',
-          organizationType: 'SHG',
-          otherOrganization: '',
-          stallSponsor: 'DRDA/DSMS',
-          otherSponsor: '',
-          accommodation: '',
-          stallPhotos: [],
-          participants: [],
-          inventory: []
-        });
-      }, 2000);
-    } catch (error) {
-      console.error('Error saving registration:', error);
-      alert('Failed to save registration');
+      }, 3000);
+    } catch (err) {
+      setError('Failed to submit registration. Please try again.');
+      console.error('Error submitting registration:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const getUniqueCategories = () => {
@@ -260,6 +340,12 @@ export const ParticipantRegistration = () => {
 
   const toggleCamera = () => {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
+  const startCapture = (type: CaptureType, index: number = 0) => {
+    setCaptureType(type);
+    setCurrentIndex(index);
+    setShowWebcam(true);
   };
 
   return (
@@ -337,6 +423,18 @@ export const ParticipantRegistration = () => {
               onChange={(e) => setRegistration(prev => ({ ...prev, stallNumber: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg text-sm"
               placeholder="Enter stall number"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Stall Name</label>
+            <input
+              type="text"
+              required
+              value={registration.stallName}
+              onChange={(e) => setRegistration(prev => ({ ...prev, stallName: e.target.value }))}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              placeholder="Enter stall name"
             />
           </div>
 
@@ -704,6 +802,41 @@ export const ParticipantRegistration = () => {
                   )}
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Participant Documents</span>
+                  <button
+                    type="button"
+                    onClick={() => startCapture('participant-doc', index)}
+                    className="flex items-center gap-2 px-3 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Capture Document</span>
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {participant.documents?.map((doc, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={doc} alt={`Document ${idx + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedParticipants = [...registration.participants];
+                          updatedParticipants[index] = {
+                            ...updatedParticipants[index],
+                            documents: updatedParticipants[index].documents.filter((_, i) => i !== idx)
+                          };
+                          setRegistration(prev => ({ ...prev, participants: updatedParticipants }));
+                        }}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -856,6 +989,42 @@ export const ParticipantRegistration = () => {
           ))}
         </div>
 
+        <div className="bg-white rounded-lg p-4 shadow-sm space-y-4">
+          <h3 className="font-semibold text-lg text-navy-800">Additional Documents</h3>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Stall Documents</span>
+              <button
+                type="button"
+                onClick={() => startCapture('stall-doc')}
+                className="flex items-center gap-2 px-3 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Capture Document</span>
+              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {registration.documents.map((doc, idx) => (
+                <div key={idx} className="relative">
+                  <img src={doc} alt={`Document ${idx + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegistration(prev => ({
+                        ...prev,
+                        documents: prev.documents.filter((_, i) => i !== idx)
+                      }));
+                    }}
+                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <button
           type="submit"
           disabled={loading}
@@ -871,6 +1040,27 @@ export const ParticipantRegistration = () => {
             <div className="bg-white p-6 rounded-lg text-center">
               <div className="text-green-500 mb-4">✓</div>
               <p className="text-lg font-medium">Registration Successful!</p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4">
+            {error}
+            <button
+              className="absolute top-0 right-0 p-4"
+              onClick={() => setError(null)}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {loading && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-600"></div>
+              <p className="mt-2">Saving registration...</p>
             </div>
           </div>
         )}
