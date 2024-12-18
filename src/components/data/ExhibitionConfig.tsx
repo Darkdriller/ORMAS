@@ -32,25 +32,28 @@ const downloadRegistrations = async (exhibitionId: string, exhibitionName: strin
       otherState: data.otherState || '',
       stallDistrict: data.stallDistrict,
       stallBlock: data.stallBlock,
-      gramPanchayat: data.gramPanchayat,
+      gramPanchayat: data.gramPanchayat || '',
       organizationType: data.organizationType,
       otherOrganization: data.otherOrganization || '',
       stallSponsor: data.stallSponsor,
       otherSponsor: data.otherSponsor || '',
       accommodation: data.accommodation,
+      stallPhotos: (data.stallPhotos || []).join(', '),
     };
 
     // Create a record for each participant
     return data.participants.map((participant: any, index: number) => ({
       ...baseRecord,
       participantNumber: index + 1,
-      participantName: participant.name,
-      participantPhone: participant.phone,
-      participantGender: participant.gender,
-      participantPhoto: participant.profilePhoto,
-      // Add inventory items
-      inventoryItems: data.inventory
-        .map((item: any) => `${item.productCategory}: ${item.productName} (Qty: ${item.quantity}, Value: ₹${item.value})`)
+      participantName: participant.name || '',
+      participantPhone: participant.phone || '',
+      participantGender: participant.gender || '',
+      participantPhoto: participant.profilePhoto || '',
+      // Add inventory items with more details
+      inventoryItems: (data.inventory || [])
+        .map((item: any) => 
+          `${item.productCategory}: ${item.productName} (Qty: ${item.quantity}, Value: ₹${item.value}, Photo: ${item.photo || 'N/A'})`
+        )
         .join('; '),
     }));
   });

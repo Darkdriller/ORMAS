@@ -74,17 +74,47 @@ export const DailySales = () => {
     }
   }, [selectedStall]);
 
+  const handleExhibitionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    console.log('Selected exhibition:', e.target.value);
+    setSelectedExhibition(e.target.value);
+    setSelectedStall(''); // Reset stall selection
+    setStalls([]); // Clear stalls array
+    setSales([]); // Clear sales array
+    setHistoricalSales([]); // Clear historical sales
+  };
+
   const fetchStalls = async () => {
+    if (!selectedExhibition) return;
+    
+    console.log('Fetching stalls for exhibition:', selectedExhibition);
     const q = query(
       collection(db, 'registrations'),
       where('exhibitionId', '==', selectedExhibition)
     );
-    const snapshot = await getDocs(q);
-    const stallData = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Stall[];
-    setStalls(stallData);
+    
+    try {
+      const snapshot = await getDocs(q);
+      const stallData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('Stall data from firestore:', data);
+        return {
+          id: doc.id,
+          stallNumber: data.stallNumber,
+          participantName: data.participants?.[0]?.name || 'Unknown',
+          inventory: data.inventory || []
+        };
+      });
+      
+      // Remove duplicates based on stallNumber
+      const uniqueStalls = stallData.filter((stall, index, self) =>
+        index === self.findIndex((s) => s.stallNumber === stall.stallNumber)
+      );
+      
+      console.log('Processed unique stall data:', uniqueStalls);
+      setStalls(uniqueStalls);
+    } catch (error) {
+      console.error('Error fetching stalls:', error);
+    }
   };
 
   const fetchHistoricalSales = async () => {
@@ -249,11 +279,10 @@ export const DailySales = () => {
             <label className="block text-sm font-medium text-gray-700">Exhibition</label>
             <select
               value={selectedExhibition}
-              onChange={(e) => setSelectedExhibition(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              required
+              onChange={handleExhibitionChange}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
             >
-              <option value="">Select Exhibition</option>
+              <option key="default-exhibition" value="">Select Exhibition</option>
               {exhibitions.map(exhibition => (
                 <option key={exhibition.id} value={exhibition.id}>
                   {exhibition.name}
@@ -266,12 +295,15 @@ export const DailySales = () => {
             <label className="block text-sm font-medium text-gray-700">Stall</label>
             <select
               value={selectedStall}
-              onChange={(e) => setSelectedStall(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              required
+              onChange={(e) => {
+                console.log('Selected stall:', e.target.value);
+                console.log('Available stalls:', stalls);
+                setSelectedStall(e.target.value);
+              }}
+              className="w-full px-3 py-2 border rounded-lg text-sm"
               disabled={!selectedExhibition}
             >
-              <option value="">Select Stall</option>
+              <option key="default-stall" value="">Select Stall</option>
               {stalls.map(stall => (
                 <option key={stall.id} value={stall.id}>
                   {stall.stallNumber} - {stall.participantName}

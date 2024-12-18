@@ -24,8 +24,8 @@ interface InventoryItem {
 
 interface Registration {
   id: string;
-  stallNumber: string;
   exhibitionId: string;
+  stallNumber: string;
   stallState: string;
   otherState?: string;
   stallDistrict: string;
@@ -314,10 +314,10 @@ export const ParticipantRegistration = () => {
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Exhibition</label>
             <select
-              required
               value={registration.exhibitionId}
               onChange={(e) => setRegistration(prev => ({ ...prev, exhibitionId: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg text-sm"
+              required
             >
               <option value="">Select Exhibition</option>
               {exhibitions.map(exhibition => (
