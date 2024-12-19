@@ -437,9 +437,11 @@ export const RegistrationViewer = () => {
                       <option value="H&CI">H&CI</option>
                       <option value="NABARD">NABARD</option>
                       <option value="MVSN">MVSN</option>
+                      <option value="Mission Shakti">Mission Shakti</option>
                       <option value="Others">Others</option>
                     </select>
                   </div>
+
 
                   {editForms[registration.id]?.stallSponsor === 'Others' && (
                     <div>

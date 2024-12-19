@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { db } from '../../firebase/config';
-import { collection, addDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
 import { Camera, Plus, X, User, Phone, Package, RotateCw } from 'lucide-react';
 import productCategories from '../../data/Product Category.json';
 import odishaMapping from '../../data/odisha_mapping.json';
@@ -35,7 +35,7 @@ interface Registration {
   gramPanchayat?: string;
   organizationType: 'SHG' | 'PG' | 'PC' | 'Proprietor' | 'Pvt Company' | 'Others';
   otherOrganization?: string;
-  stallSponsor: 'DRDA/DSMS' | 'KVIC' | 'H&CI' | 'NABARD' | 'MVSN' | 'Others';
+  stallSponsor: 'DRDA/DSMS' | 'KVIC' | 'H&CI' | 'NABARD' | 'MVSN' | 'Mission Shakti' | 'Others';
   otherSponsor?: string;
   accommodation: string;
   stallPhotos: string[];
@@ -312,20 +312,7 @@ export const ParticipantRegistration = () => {
 
     setLoading(true);
     try {
-      // Add the registration
       const docRef = await addDoc(collection(db, 'registrations'), registration);
-      
-      // Update the registration with its ID
-      await updateDoc(docRef, {
-        id: docRef.id
-      });
-
-      // Update local state with ID
-      setRegistration(prev => ({
-        ...prev,
-        id: docRef.id
-      }));
-
       setSuccess(true);
       // Reset form after successful submission
       setRegistration(initialRegistration);
@@ -645,6 +632,7 @@ export const ParticipantRegistration = () => {
                 <option value="H&CI">H&CI</option>
                 <option value="NABARD">NABARD</option>
                 <option value="MVSN">MVSN</option>
+                <option value="Mission Shakti">Mission Shakti</option>
                 <option value="Others">Others</option>
               </select>
             </div>
