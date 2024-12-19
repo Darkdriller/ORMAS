@@ -61,6 +61,14 @@
   "Product Sub Category ": "Lungi"
  },
  {
+  "Product Category ": "Handloom",
+  "Product Sub Category ": "Suit"
+ },
+ {
+  "Product Category ": "Handloom",
+  "Product Sub Category ": "Handloom Others"
+ },
+ {
   "Product Category ": "Handicraft",
   "Product Sub Category ": "Dhokra Craft Figurines Animal"
  },
@@ -345,6 +353,14 @@
   "Product Sub Category ": "Kewda Craft Hand Bags"
  },
  {
+    "Product Category ": "Handicraft",
+    "Product Sub Category ": "Craft Shoes"
+},
+ {
+  "Product Category ": "Handicraft",
+  "Product Sub Category ": "Handicraft Others"
+ },
+ {
   "Product Category ": "Minor Forest Products (MFP)",
   "Product Sub Category ": "Honey"
  },
@@ -383,6 +399,14 @@
  {
   "Product Category ": "Minor Forest Products (MFP)",
   "Product Sub Category ": " Nagrmatha "
+ },
+ {
+  "Product Category ": "Minor Forest Products (MFP)",
+  "Product Sub Category ": "Agarbatti"
+ },
+ {
+  "Product Category ": "Minor Forest Products (MFP)",
+  "Product Sub Category ": "MFP Others"
  },
  {
   "Product Category ": "Food & Spices ",
@@ -561,6 +585,14 @@
   "Product Sub Category ": "Millet Products-Suan  Powder- Little Millet"
  },
  {
+  "Product Category ": "Food & Spices ",
+  "Product Sub Category ": "Food & Spices Others"
+ },
+ {
+  "Product Category ": "Food & Spices ",
+  "Product Sub Category ": "Millet Others"
+ },
+ {
   "Product Category ": "Home Furnishing ",
   "Product Sub Category ": " Curtains"
  },
@@ -582,6 +614,10 @@
   "Product Sub Category ": "Wall Hangings "
  },
  {
+  "Product Category ": "Home Furnishing ",
+  "Product Sub Category ": "Home Furnishing Others"
+ },
+ {
   "Product Category ": "Woolen Knit Wear ",
   "Product Sub Category ": "Woolen Shawl"
  },
@@ -598,6 +634,10 @@
   "Product Sub Category ": "Woolen Caps "
  },
  {
+  "Product Category ": "Woolen Knit Wear ",
+  "Product Sub Category ": "Woolen Knit Wear Others"
+ },
+ {
   "Product Category ": "Leather Products ",
   "Product Sub Category ": "Leather Bags"
  },
@@ -608,6 +648,10 @@
  {
   "Product Category ": "Leather Products ",
   "Product Sub Category ": "Foot Wear"
+ },
+ {
+  "Product Category ": "Leather Products ",
+  "Product Sub Category ": "Leather Products Others"
  },
  {
   "Product Category ": "Jewellery",
@@ -644,6 +688,10 @@
  {
   "Product Category ": "Jewellery",
   "Product Sub Category ": "Tumba Jewellery"
+ },
+ {
+  "Product Category ": "Jewellery",
+  "Product Sub Category ": "Jewellery Others"
  },
  {
   "Product Category ": "Others",
