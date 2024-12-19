@@ -27,6 +27,9 @@ interface Stall {
   }>;
 }
 
+const TOTAL_SALES_CATEGORY = 'Total Sales';
+const TOTAL_SALES_PRODUCT = 'Total Sale';
+
 export const DailySales = () => {
   const [exhibitions, setExhibitions] = useState<Array<{ id: string; name: string }>>([]);
   const [stalls, setStalls] = useState<Stall[]>([]);
@@ -40,6 +43,7 @@ export const DailySales = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [dailyTotal, setDailyTotal] = useState<number>(0);
 
   useEffect(() => {
     let mounted = true;
@@ -145,16 +149,11 @@ export const DailySales = () => {
   const updateSaleItem = (index: number, field: string, value: string | number) => {
     const updatedSales = [...sales];
     if (field === 'productCategory') {
-      console.log('Category changed:', {
-        newCategory: value,
-        availableProducts: getStallProducts(selectedStall)
-          .filter(p => p.productCategory.trim() === value.toString().trim())
-      });
-      
+      const category = value.toString();
       updatedSales[index] = {
         ...updatedSales[index],
-        productCategory: value.toString(),
-        productName: ''
+        productCategory: category,
+        productName: category === TOTAL_SALES_CATEGORY ? TOTAL_SALES_PRODUCT : ''
       };
       setSales(updatedSales);
 
@@ -260,14 +259,50 @@ export const DailySales = () => {
     }
   };
 
+  const updateDailyTotal = (products: Array<{productCategory: string, productName: string, quantitySold: number, salesValue: number}>) => {
+    const total = products.reduce((sum, product) => {
+      if (product.productCategory !== 'Total Products') {
+        return sum + (product.quantitySold * product.salesValue);
+      }
+      return sum;
+    }, 0);
+
+    // Find if there's already a total product
+    const totalProductIndex = products.findIndex(p => p.productCategory === 'Total Products');
+    
+    if (totalProductIndex >= 0) {
+      // Update existing total
+      products[totalProductIndex] = {
+        ...products[totalProductIndex],
+        quantitySold: 1,
+        salesValue: total,
+        productName: 'Daily Total'
+      };
+    } else {
+      // Add new total product
+      products.push({
+        productCategory: 'Total Products',
+        productName: 'Daily Total',
+        quantitySold: 1,
+        salesValue: total
+      });
+    }
+    
+    return products;
+  };
+
   const saveSaleEdit = async (saleId: string) => {
     try {
+      const updatedProducts = updateDailyTotal([...editingProducts]);
       const saleRef = doc(db, 'dailySales', saleId);
-      await updateDoc(saleRef, { products: editingProducts });
-      
+      await updateDoc(saleRef, { products: updatedProducts });
       // Update local state
       setHistoricalSales(prev => prev.map(sale => 
-        sale.id === saleId ? { ...sale, products: editingProducts } : sale
+        sale.id === saleId ? { ...sale, products: updatedProducts.map(product => ({
+          ...product,
+          quantitySold: product.quantitySold,
+          salesValue: product.salesValue
+        })) } : sale
       ));
       
       setEditingSaleId(null);
@@ -281,10 +316,19 @@ export const DailySales = () => {
 
   const getStallProducts = (stallId: string): Array<{productCategory: string, productName: string}> => {
     const selectedStallData = stalls.find(stall => stall.id === stallId);
-    return (selectedStallData?.inventory || []).map(item => ({
+    const inventoryProducts = (selectedStallData?.inventory || []).map(item => ({
       productCategory: item.productCategory.trim(),
       productName: item.productName.trim()
     }));
+
+    // Add the total sales category and product
+    return [
+      ...inventoryProducts,
+      {
+        productCategory: TOTAL_SALES_CATEGORY,
+        productName: TOTAL_SALES_PRODUCT
+      }
+    ];
   };
 
   return (
@@ -369,9 +413,14 @@ export const DailySales = () => {
                   required
                 >
                   <option value="">Select Category</option>
-                  {[...new Set(getStallProducts(selectedStall).map(p => p.productCategory))]
+                  {[
+                    ...new Set(getStallProducts(selectedStall)
+                      .filter(p => p.productCategory !== TOTAL_SALES_CATEGORY)
+                      .map(p => p.productCategory)),
+                    TOTAL_SALES_CATEGORY
+                  ]
                     .filter(Boolean)
-                    .sort()
+                    .sort((a, b) => a === TOTAL_SALES_CATEGORY ? 1 : b === TOTAL_SALES_CATEGORY ? -1 : a.localeCompare(b))
                     .map((category) => (
                       <option key={category} value={category}>
                         {category}
@@ -387,10 +436,10 @@ export const DailySales = () => {
                   onChange={(e) => updateSaleItem(index, 'productName', e.target.value.trim())}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                   required
-                  disabled={!item.productCategory}
+                  disabled={!item.productCategory || item.productCategory === TOTAL_SALES_CATEGORY}
                 >
                   <option value="">Select Product</option>
-                  {item.productCategory && 
+                  {item.productCategory && item.productCategory !== TOTAL_SALES_CATEGORY && 
                     getStallProducts(selectedStall)
                       .filter(p => p.productCategory.trim() === item.productCategory.trim())
                       .map((product) => (
@@ -398,6 +447,9 @@ export const DailySales = () => {
                           {product.productName}
                         </option>
                       ))}
+                  {item.productCategory === TOTAL_SALES_CATEGORY && (
+                    <option value={TOTAL_SALES_PRODUCT}>{TOTAL_SALES_PRODUCT}</option>
+                  )}
                 </select>
               </div>
 

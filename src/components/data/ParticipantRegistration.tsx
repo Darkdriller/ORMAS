@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { db } from '../../firebase/config';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, getDocs, updateDoc } from 'firebase/firestore';
 import { Camera, Plus, X, User, Phone, Package, RotateCw } from 'lucide-react';
 import productCategories from '../../data/Product Category.json';
 import odishaMapping from '../../data/odisha_mapping.json';
@@ -312,7 +312,20 @@ export const ParticipantRegistration = () => {
 
     setLoading(true);
     try {
+      // Add the registration
       const docRef = await addDoc(collection(db, 'registrations'), registration);
+      
+      // Update the registration with its ID
+      await updateDoc(docRef, {
+        id: docRef.id
+      });
+
+      // Update local state with ID
+      setRegistration(prev => ({
+        ...prev,
+        id: docRef.id
+      }));
+
       setSuccess(true);
       // Reset form after successful submission
       setRegistration(initialRegistration);

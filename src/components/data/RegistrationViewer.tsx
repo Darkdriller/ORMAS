@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../../firebase/config';
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
-import { Edit2, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit2, Save, X, ChevronDown, ChevronUp, Camera } from 'lucide-react';
 import { indianStates, unionTerritories } from '../../constants/locationConstants';
+import Webcam from 'react-webcam';
 
 interface Registration {
   id: string;
@@ -19,6 +20,8 @@ interface Registration {
   stallSponsor: string;
   otherSponsor?: string;
   accommodation: string;
+  stallPhotos?: string[];
+  documents?: string[];
   participants: Array<{
     name: string;
     phone: string;
@@ -39,15 +42,19 @@ export const RegistrationViewer = () => {
   const [exhibitions, setExhibitions] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedExhibition, setSelectedExhibition] = useState('');
   const [registrations, setRegistrations] = useState<Registration[]>([]);
-  const [expandedStall, setExpandedStall] = useState<string | null>(null);
+  const [expandedStalls, setExpandedStalls] = useState<{[key: string]: boolean}>({});
   const [editingParticipant, setEditingParticipant] = useState<{
     stallId: string;
     participantIndex: number;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editingRegistration, setEditingRegistration] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Registration>>({});
+  const [editingRegistrations, setEditingRegistrations] = useState<{[key: string]: boolean}>({});
+  const [editForms, setEditForms] = useState<{[key: string]: Partial<Registration>}>({});
+  const [showWebcam, setShowWebcam] = useState(false);
+  const [captureType, setCaptureType] = useState<'stall' | 'document' | undefined>(undefined);
+  const [currentStallId, setCurrentStallId] = useState<string>('');
+  const webcamRef = useRef<Webcam>(null);
 
   useEffect(() => {
     fetchExhibitions();
@@ -121,25 +128,61 @@ export const RegistrationViewer = () => {
 
   const handleRegistrationEdit = async (registrationId: string) => {
     try {
-      if (!editForm) return;
+      if (!editForms[registrationId] || !registrationId) return;
 
-      await updateDoc(doc(db, 'registrations', registrationId), {
-        ...editForm,
-        stallNumber: undefined // Ensure stallNumber can't be modified
-      });
+      const registrationRef = doc(db, 'registrations', registrationId);
+      const updateData = { ...editForms[registrationId] };
+      delete updateData.id;
+      delete updateData.stallNumber;
+
+      await updateDoc(registrationRef, updateData);
 
       setRegistrations(prev => prev.map(reg => 
         reg.id === registrationId 
-          ? { ...reg, ...editForm }
+          ? { ...reg, ...updateData }
           : reg
       ));
 
-      setEditingRegistration(null);
-      setEditForm({});
+      setEditingRegistrations(prev => ({
+        ...prev,
+        [registrationId]: false
+      }));
+      setEditForms(prev => {
+        const newForms = { ...prev };
+        delete newForms[registrationId];
+        return newForms;
+      });
     } catch (error) {
       console.error('Error updating registration:', error);
       setError('Failed to update registration');
     }
+  };
+
+  const capturePhoto = () => {
+    if (webcamRef.current) {
+      const imageSrc = webcamRef.current.getScreenshot();
+      if (!imageSrc) return;
+
+      setEditForms(prev => ({
+        ...prev,
+        [currentStallId]: {
+          ...prev[currentStallId],
+          [captureType === 'stall' ? 'stallPhotos' : 'documents']: [
+            ...(prev[currentStallId]?.[captureType === 'stall' ? 'stallPhotos' : 'documents'] || []),
+            imageSrc
+          ]
+        }
+      }));
+
+      setShowWebcam(false);
+      setCaptureType(undefined);
+    }
+  };
+
+  const startCapture = (type: 'stall' | 'document', stallId: string) => {
+    setShowWebcam(true);
+    setCaptureType(type);
+    setCurrentStallId(stallId);
   };
 
   return (
@@ -170,9 +213,14 @@ export const RegistrationViewer = () => {
           <div key={registration.id} className="border rounded-lg overflow-hidden">
             <div
               className="flex justify-between items-center p-4 bg-gray-50 cursor-pointer"
-              onClick={() => setExpandedStall(
-                expandedStall === registration.id ? null : registration.id
-              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedStalls(prev => {
+                  const newState = { ...prev };
+                  newState[registration.id] = !prev[registration.id];
+                  return newState;
+                });
+              }}
             >
               <div>
                 <h3 className="font-semibold">
@@ -186,17 +234,23 @@ export const RegistrationViewer = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEditingRegistration(registration.id);
-                    setEditForm({
-                      ...registration,
-                      stallNumber: undefined
+                    setEditingRegistrations({});
+                    setEditForms({});
+                    setEditingRegistrations({ [registration.id]: true });
+                    setEditForms({
+                      [registration.id]: {
+                        ...registration,
+                        stallNumber: undefined,
+                        stallPhotos: registration.stallPhotos || [],
+                        documents: registration.documents || [],
+                      }
                     });
                   }}
                   className="text-navy-600 hover:text-navy-700"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
-                {expandedStall === registration.id ? (
+                {expandedStalls[registration.id] ? (
                   <ChevronUp className="w-5 h-5" />
                 ) : (
                   <ChevronDown className="w-5 h-5" />
@@ -204,31 +258,40 @@ export const RegistrationViewer = () => {
               </div>
             </div>
 
-            {editingRegistration === registration.id ? (
+            {editingRegistrations[registration.id] ? (
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Stall Name</label>
                     <input
                       type="text"
-                      value={editForm.stallName || ''}
-                      onChange={(e) => setEditForm({ ...editForm, stallName: e.target.value })}
+                      value={editForms[registration.id]?.stallName || ''}
+                      onChange={(e) => setEditForms(prev => ({
+                        ...prev,
+                        [registration.id]: {
+                          ...prev[registration.id],
+                          stallName: e.target.value
+                        }
+                      }))}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">State</label>
                     <select
-                      value={editForm.stallState || ''}
+                      value={editForms[registration.id]?.stallState || ''}
                       onChange={(e) => {
                         const selectedState = e.target.value;
-                        setEditForm(prev => ({
+                        setEditForms(prev => ({
                           ...prev,
-                          stallState: selectedState,
-                          stallDistrict: '',
-                          stallBlock: '',
-                          gramPanchayat: '',
-                          otherState: ''
+                          [registration.id]: {
+                            ...prev[registration.id],
+                            stallState: selectedState,
+                            stallDistrict: '',
+                            stallBlock: '',
+                            gramPanchayat: '',
+                            otherState: ''
+                          }
                         }));
                       }}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
@@ -239,19 +302,25 @@ export const RegistrationViewer = () => {
                     </select>
                   </div>
 
-                  {editForm.stallState === 'Other' && (
+                  {editForms[registration.id]?.stallState === 'Other' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Other State</label>
                       <select
-                        value={editForm.otherState || ''}
-                        onChange={(e) => setEditForm({ ...editForm, otherState: e.target.value })}
+                        value={editForms[registration.id]?.otherState || ''}
+                        onChange={(e) => setEditForms(prev => ({
+                          ...prev,
+                          [registration.id]: {
+                            ...prev[registration.id],
+                            otherState: e.target.value
+                          }
+                        }))}
                         className="w-full px-3 py-2 border rounded-lg text-sm"
                       >
                         <option value="">Select State</option>
                         {[...indianStates, ...unionTerritories]
                           .filter(state => state !== 'Odisha')
                           .map(state => (
-                            <option key={state} value={state}>{state}</option>
+                            <option key={`state-${state}`} value={state}>{state}</option>
                           ))
                         }
                       </select>
@@ -262,8 +331,14 @@ export const RegistrationViewer = () => {
                     <label className="block text-sm font-medium text-gray-700">District</label>
                     <input
                       type="text"
-                      value={editForm.stallDistrict || ''}
-                      onChange={(e) => setEditForm({ ...editForm, stallDistrict: e.target.value })}
+                      value={editForms[registration.id]?.stallDistrict || ''}
+                      onChange={(e) => setEditForms(prev => ({
+                        ...prev,
+                        [registration.id]: {
+                          ...prev[registration.id],
+                          stallDistrict: e.target.value
+                        }
+                      }))}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -272,19 +347,31 @@ export const RegistrationViewer = () => {
                     <label className="block text-sm font-medium text-gray-700">Block</label>
                     <input
                       type="text"
-                      value={editForm.stallBlock || ''}
-                      onChange={(e) => setEditForm({ ...editForm, stallBlock: e.target.value })}
+                      value={editForms[registration.id]?.stallBlock || ''}
+                      onChange={(e) => setEditForms(prev => ({
+                        ...prev,
+                        [registration.id]: {
+                          ...prev[registration.id],
+                          stallBlock: e.target.value
+                        }
+                      }))}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
 
-                  {editForm.stallState === 'Odisha' && (
+                  {editForms[registration.id]?.stallState === 'Odisha' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Gram Panchayat</label>
                       <input
                         type="text"
-                        value={editForm.gramPanchayat || ''}
-                        onChange={(e) => setEditForm({ ...editForm, gramPanchayat: e.target.value })}
+                        value={editForms[registration.id]?.gramPanchayat || ''}
+                        onChange={(e) => setEditForms(prev => ({
+                          ...prev,
+                          [registration.id]: {
+                            ...prev[registration.id],
+                            gramPanchayat: e.target.value
+                          }
+                        }))}
                         className="w-full px-3 py-2 border rounded-lg text-sm"
                       />
                     </div>
@@ -293,10 +380,17 @@ export const RegistrationViewer = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Organization Type</label>
                     <select
-                      value={editForm.organizationType || ''}
-                      onChange={(e) => setEditForm({ ...editForm, organizationType: e.target.value })}
+                      value={editForms[registration.id]?.organizationType || ''}
+                      onChange={(e) => setEditForms(prev => ({
+                        ...prev,
+                        [registration.id]: {
+                          ...prev[registration.id],
+                          organizationType: e.target.value
+                        }
+                      }))}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     >
+                      <option value="">Select Organization Type</option>
                       <option value="SHG">SHG</option>
                       <option value="PG">PG</option>
                       <option value="PC">PC</option>
@@ -306,13 +400,19 @@ export const RegistrationViewer = () => {
                     </select>
                   </div>
 
-                  {editForm.organizationType === 'Others' && (
+                  {editForms[registration.id]?.organizationType === 'Others' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Specify Organization Type</label>
                       <input
                         type="text"
-                        value={editForm.otherOrganization || ''}
-                        onChange={(e) => setEditForm({ ...editForm, otherOrganization: e.target.value })}
+                        value={editForms[registration.id]?.otherOrganization || ''}
+                        onChange={(e) => setEditForms(prev => ({
+                          ...prev,
+                          [registration.id]: {
+                            ...prev[registration.id],
+                            otherOrganization: e.target.value
+                          }
+                        }))}
                         className="w-full px-3 py-2 border rounded-lg text-sm"
                       />
                     </div>
@@ -321,10 +421,17 @@ export const RegistrationViewer = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Stall Sponsor</label>
                     <select
-                      value={editForm.stallSponsor || ''}
-                      onChange={(e) => setEditForm({ ...editForm, stallSponsor: e.target.value })}
+                      value={editForms[registration.id]?.stallSponsor || ''}
+                      onChange={(e) => setEditForms(prev => ({
+                        ...prev,
+                        [registration.id]: {
+                          ...prev[registration.id],
+                          stallSponsor: e.target.value
+                        }
+                      }))}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     >
+                      <option value="">Select Sponsor</option>
                       <option value="DRDA/DSMS">DRDA/DSMS</option>
                       <option value="KVIC">KVIC</option>
                       <option value="H&CI">H&CI</option>
@@ -334,13 +441,19 @@ export const RegistrationViewer = () => {
                     </select>
                   </div>
 
-                  {editForm.stallSponsor === 'Others' && (
+                  {editForms[registration.id]?.stallSponsor === 'Others' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Specify Sponsor</label>
                       <input
                         type="text"
-                        value={editForm.otherSponsor || ''}
-                        onChange={(e) => setEditForm({ ...editForm, otherSponsor: e.target.value })}
+                        value={editForms[registration.id]?.otherSponsor || ''}
+                        onChange={(e) => setEditForms(prev => ({
+                          ...prev,
+                          [registration.id]: {
+                            ...prev[registration.id],
+                            otherSponsor: e.target.value
+                          }
+                        }))}
                         className="w-full px-3 py-2 border rounded-lg text-sm"
                       />
                     </div>
@@ -350,8 +463,14 @@ export const RegistrationViewer = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Accommodation Details</label>
                   <textarea
-                    value={editForm.accommodation || ''}
-                    onChange={(e) => setEditForm({ ...editForm, accommodation: e.target.value })}
+                    value={editForms[registration.id]?.accommodation || ''}
+                    onChange={(e) => setEditForms(prev => ({
+                      ...prev,
+                      [registration.id]: {
+                        ...prev[registration.id],
+                        accommodation: e.target.value
+                      }
+                    }))}
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                     rows={2}
                   />
@@ -360,8 +479,15 @@ export const RegistrationViewer = () => {
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={() => {
-                      setEditingRegistration(null);
-                      setEditForm({});
+                      setEditingRegistrations(prev => ({
+                        ...prev,
+                        [registration.id]: false
+                      }));
+                      setEditForms(prev => {
+                        const newForms = { ...prev };
+                        delete newForms[registration.id];
+                        return newForms;
+                      });
                     }}
                     className="px-3 py-2 text-gray-600 hover:text-gray-700"
                   >
@@ -374,14 +500,84 @@ export const RegistrationViewer = () => {
                     Save Changes
                   </button>
                 </div>
+
+                {editingRegistrations[registration.id] && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Stall Photos</label>
+                      <div className="flex flex-wrap gap-2">
+                        {editForms[registration.id]?.stallPhotos?.map((photo, index) => (
+                          <div key={index} className="relative">
+                            <img src={photo} alt="Stall" className="w-20 h-20 object-cover rounded-lg" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditForms(prev => ({
+                                  ...prev,
+                                  [registration.id]: {
+                                    ...prev[registration.id],
+                                    stallPhotos: prev[registration.id]?.stallPhotos?.filter((_, i) => i !== index)
+                                  }
+                                }));
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => startCapture('stall', registration.id)}
+                          className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-500"
+                        >
+                          <Camera className="w-6 h-6" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Documents</label>
+                      <div className="flex flex-wrap gap-2">
+                        {editForms[registration.id]?.documents?.map((doc, index) => (
+                          <div key={index} className="relative">
+                            <img src={doc} alt="Document" className="w-20 h-20 object-cover rounded-lg" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditForms(prev => ({
+                                  ...prev,
+                                  [registration.id]: {
+                                    ...prev[registration.id],
+                                    documents: prev[registration.id]?.documents?.filter((_, i) => i !== index)
+                                  }
+                                }));
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => startCapture('document', registration.id)}
+                          className="w-20 h-20 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:text-gray-500"
+                        >
+                          <Camera className="w-6 h-6" />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
-              expandedStall === registration.id && (
+              expandedStalls[registration.id] && (
                 <div className="p-4 space-y-4">
                   <h4 className="font-medium">Participants</h4>
                   <div className="space-y-4">
                     {registration.participants.map((participant, index) => (
-                      <div key={index} className="border rounded-lg p-3">
+                      <div key={`${registration.id}-participant-${index}`} className="border rounded-lg p-3">
                         {editingParticipant?.stallId === registration.id && 
                          editingParticipant?.participantIndex === index ? (
                           <div className="space-y-3">
@@ -466,6 +662,36 @@ export const RegistrationViewer = () => {
           </div>
         ))}
       </div>
+
+      {showWebcam && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-lg">
+            <Webcam
+              ref={webcamRef}
+              screenshotFormat="image/jpeg"
+              className="rounded-lg"
+              videoConstraints={{ facingMode: "environment" }}
+            />
+            <div className="flex justify-between mt-4">
+              <button
+                onClick={() => {
+                  setShowWebcam(false);
+                  setCaptureType(undefined);
+                }}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={capturePhoto}
+                className="px-4 py-2 bg-navy-600 text-white rounded-lg"
+              >
+                Capture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
